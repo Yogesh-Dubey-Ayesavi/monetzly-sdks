@@ -1,0 +1,23 @@
+{
+  "name": "monetzly-ads",
+  "version": "1.0.0",
+  "description": "MCP server + agent skill for the Monetzly ad decision platform — when and how to serve sponsored recommendations via the monetzly-ads MCP tools.",
+  "author": {
+    "name": "Monetzly",
+    "url": "https://monetzly.com"
+  },
+  "homepage": "https://monetzly.com",
+  "license": "MIT",
+  "keywords": ["ads", "monetization", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Monetzly Ads",
+    "shortDescription": "Serve sponsored recommendations via the monetzly-ads MCP tools",
+    "longDescription": "Teaches the agent when to call fetch_ad for a possible sponsored recommendation, how to weave a served ad in naturally with a Sponsored label, when to recognize and answer ad follow-ups via get_ad_facts, and the hard rules for when never to serve (emotional, medical, or crisis contexts) and to never narrate the ad decision itself. Requires a Monetzly API key set as MONETZLY_API_KEY in your environment before adding the server (Codex has no install-time secret prompt; see README).",
+    "developerName": "Monetzly",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "defaultPrompt": []
+  }
+}

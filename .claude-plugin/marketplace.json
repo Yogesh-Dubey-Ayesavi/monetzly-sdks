@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "monetzly",
+  "description": "Monetzly ad decision platform — agent skills for serving sponsored recommendations.",
+  "owner": {
+    "name": "Monetzly"
+  },
+  "plugins": [
+    {
+      "name": "monetzly-ads",
+      "description": "When and how to serve sponsored recommendations via the monetzly-ads MCP tools.",
+      "source": "./",
+      "category": "monetization"
+    }
+  ]
+}

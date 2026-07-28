@@ -1,0 +1,306 @@
+Metadata-Version: 2.4
+Name: monetzly-sdk
+Version: 2.0.0
+Summary: Monetzly Python SDK for gRPC-based ad injection in token streams
+Home-page: https://github.com/monetzly/python-sdk
+Author: Monetzly
+Author-email: Monetzly <support@monetzly.com>
+License: MIT
+Project-URL: Homepage, https://github.com/monetzly/python-sdk
+Project-URL: Repository, https://github.com/monetzly/python-sdk.git
+Project-URL: Issues, https://github.com/monetzly/python-sdk/issues
+Keywords: monetzly,ads,sdk,grpc,streaming,ai
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: grpcio>=1.60.0
+Requires-Dist: grpcio-tools>=1.60.0
+Requires-Dist: protobuf>=4.25.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: flake8>=4.0.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Provides-Extra: langchain
+Requires-Dist: langchain-google-genai>=0.1.0; extra == "langchain"
+Requires-Dist: python-dotenv>=1.0.0; extra == "langchain"
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
+# Monetzly Python SDK
+
+A gRPC-based Python SDK for integrating with Monetzly Ads Services. This SDK enables streaming token injection with advertisements for enhanced monetization of your AI applications.
+
+## Features
+
+- **gRPC Streaming**: High-performance bidirectional streaming
+- **Async/Await Support**: Full async support with Python's asyncio
+- **LangChain Integration**: Easy integration with LangChain LLMs
+- **Type Safety**: Full type hints and dataclass support
+- **Error Handling**: Graceful fallback to original streams on errors
+- **Context Manager**: Automatic connection management
+
+## Installation
+
+```bash
+pip install monetzly-sdk
+```
+
+Or for development:
+
+```bash
+git clone https://github.com/monetzly/python-sdk.git
+cd python-sdk
+pip install -e .
+```
+
+## Quick Start
+
+### Basic Usage
+
+```python
+import asyncio
+from monetzly import MonetzlySDK, MonetzlyConfig, InjectParams, TokenChunk
+
+# Configure the SDK
+config = MonetzlyConfig(
+    api_key="your-api-key",
+    server_address="your-server.com:443",  # gRPC server address
+    use_ssl=True,  # Use SSL for production
+    timeout=30000
+)
+
+# Create SDK instance
+sdk = MonetzlySDK(config)
+
+async def example_streaming():
+    # Create a simple token stream
+    async def simple_token_stream():
+        tokens = ["Hello", " world", "!", " This", " is", " a", " test", "."]
+        for token in tokens:
+            yield TokenChunk(content=token)
+            await asyncio.sleep(0.1)  # Simulate streaming delay
+    
+    # Use context manager for automatic connection handling
+    async with sdk:
+        # Inject ads into the token stream
+        async for enhanced_token in sdk.inject(
+            simple_token_stream(),
+            InjectParams(
+                session_id="my-session-123",
+                prompt="Test prompt",
+                metadata={"user_type": "premium"}
+            )
+        ):
+            print(enhanced_token.content, end="", flush=True)
+
+# Run the example
+asyncio.run(example_streaming())
+```
+
+### LangChain Integration
+
+```python
+import asyncio
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
+from monetzly import MonetzlySDK, MonetzlyConfig, InjectParams, TokenChunk
+
+# Setup LangChain LLM
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    temperature=0.7,
+    api_key=os.getenv("GOOGLE_API_KEY")
+)
+
+# Setup Monetzly SDK
+config = MonetzlyConfig(
+    api_key=os.getenv("MONETZLY_API_KEY"),
+    server_address=os.getenv("MONETZLY_SERVER_ADDRESS", "localhost:8080"),
+    use_ssl=False  # Use False for local development
+)
+
+async def langchain_example():
+    sdk = MonetzlySDK(config)
+    
+    async def llm_token_stream():
+        # Stream response from LangChain LLM
+        async for chunk in llm.astream([
+            ("system", "You are a helpful assistant."),
+            ("human", "What are the benefits of renewable energy?")
+        ]):
+            if chunk.content:
+                yield TokenChunk(content=chunk.content)
+    
+    try:
+        await sdk.connect()
+        
+        # Process LLM stream with ad injection
+        async for enhanced_token in sdk.inject(
+            llm_token_stream(),
+            InjectParams(
+                prompt="What are the benefits of renewable energy?",
+                metadata={"topic": "environment", "user_type": "business"}
+            )
+        ):
+            print(enhanced_token.content, end="", flush=True)
+            
+    finally:
+        await sdk.disconnect()
+
+asyncio.run(langchain_example())
+```
+
+### Manual Connection Management
+
+```python
+async def manual_connection_example():
+    config = MonetzlyConfig(
+        api_key="your-api-key",
+        server_address="your-server.com:443"
+    )
+    
+    sdk = MonetzlySDK(config)
+    
+    try:
+        # Manual connection
+        await sdk.connect()
+        
+        # Your streaming logic here
+        async for token in sdk.inject(your_token_stream):
+            print(token.content, end="")
+    
+    finally:
+        # Manual cleanup
+        await sdk.disconnect()
+```
+
+## Configuration
+
+### MonetzlyConfig
+
+```python
+from monetzly import MonetzlyConfig
+
+config = MonetzlyConfig(
+    api_key="your-api-key",           # Required: Your Monetzly API key
+    server_address="host:port",       # Required: gRPC server address
+    timeout=30000,                    # Optional: Timeout in milliseconds
+    use_ssl=True,                     # Optional: Use SSL/TLS (default: True)
+    metadata={"custom": "value"}      # Optional: Additional gRPC metadata
+)
+```
+
+### InjectParams
+
+```python
+from monetzly import InjectParams
+
+params = InjectParams(
+    session_id="unique-session-id",   # Optional: Session identifier
+    prompt="Original user prompt",    # Optional: The original prompt
+    metadata={                        # Optional: Additional context
+        "user_type": "premium",
+        "topic": "technology",
+        "language": "en"
+    }
+)
+```
+
+## API Reference
+
+### MonetzlySDK
+
+#### Methods
+
+- `__init__(config: MonetzlyConfig)`: Initialize the SDK
+- `async connect()`: Connect to the gRPC server
+- `async disconnect()`: Disconnect from the gRPC server
+- `async inject(token_stream, params=None) -> AsyncGenerator[TokenChunk, None]`: Inject ads into token stream
+- `is_configured() -> bool`: Check if SDK is properly configured
+- `update_config(**updates)`: Update configuration
+
+#### Properties
+
+- `version: str`: SDK version
+
+### Context Manager Support
+
+The SDK supports async context managers for automatic connection management:
+
+```python
+async with MonetzlySDK(config) as sdk:
+    async for token in sdk.inject(stream):
+        print(token.content, end="")
+```
+
+## Error Handling
+
+The SDK includes graceful error handling. If the gRPC connection fails or encounters an error, it will automatically fall back to yielding the original token stream without ads:
+
+```python
+try:
+    async for token in sdk.inject(stream, params):
+        print(token.content, end="")
+except Exception as e:
+    print(f"Error: {e}")
+    # SDK automatically falls back to original stream
+```
+
+## Environment Variables
+
+You can use environment variables for configuration:
+
+```bash
+export MONETZLY_API_KEY="your-api-key"
+export MONETZLY_SERVER_ADDRESS="your-server.com:443"
+```
+
+```python
+import os
+from monetzly import MonetzlyConfig
+
+config = MonetzlyConfig(
+    api_key=os.getenv("MONETZLY_API_KEY"),
+    server_address=os.getenv("MONETZLY_SERVER_ADDRESS")
+)
+```
+
+## Development
+
+### Running Tests
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+### Code Formatting
+
+```bash
+black monetzly/
+flake8 monetzly/
+mypy monetzly/
+```
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions:
+- GitHub Issues: https://github.com/monetzly/python-sdk/issues
+- Documentation: https://docs.monetzly.com
+- Email: support@monetzly.com

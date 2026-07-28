@@ -1,0 +1,56 @@
+{
+  "name": "@monetzly/server-sdk",
+  "version": "2.0.0",
+  "description": "Monetzly JS Server SDK — Mode B native ad integration for Node.js/TypeScript LLM applications",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "npm run test:v2",
+    "test:v2": "tsx --test tests/v2/*.test.ts",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "keywords": [
+    "monetzly",
+    "ads",
+    "sdk",
+    "typescript",
+    "isomorphic",
+    "server"
+  ],
+  "author": "Monetzly",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/monetzly/server-sdk-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/monetzly/server-sdk-js/issues"
+  },
+  "homepage": "https://github.com/monetzly/server-sdk-js#readme"
+}
