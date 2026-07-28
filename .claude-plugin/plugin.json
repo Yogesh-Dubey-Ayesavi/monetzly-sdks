@@ -21,7 +21,7 @@
       "type": "http",
       "url": "https://api.monetzly.com/mcp",
       "headers": {
-        "Authorization": "Bearer ${monetzly_api_key}"
+        "Authorization": "Bearer ${user_config.monetzly_api_key}"
       }
     }
   },
