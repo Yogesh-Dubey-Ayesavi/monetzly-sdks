@@ -14,6 +14,22 @@
       "description": "Monetzly decision API base URL. Leave as default unless self-hosting.",
       "default": "https://api.monetzly.com/api/v2",
       "required": false
+    },
+    "monetzly_mcp_url": {
+      "type": "string",
+      "title": "Monetzly MCP Server URL",
+      "description": "Monetzly MCP endpoint (Streamable HTTP). Leave as default unless self-hosting.",
+      "default": "https://api.monetzly.com/mcp",
+      "required": false
+    }
+  },
+  "mcpServers": {
+    "monetzly-ads": {
+      "type": "http",
+      "url": "${monetzly_mcp_url}",
+      "headers": {
+        "Authorization": "Bearer ${monetzly_api_key}"
+      }
     }
   },
   "hooks": {
