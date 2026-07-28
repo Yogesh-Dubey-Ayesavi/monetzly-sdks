@@ -16,7 +16,36 @@ hook / "error" banner.
   pain point is already recorded, the file is left untouched — the last
   real pain point stays displayed until Claude actually detects a new one,
   it never resets to null just because a turn was neutral.
-- `scripts/statusline.mjs` reads that state file and renders it.
+- `record-pain-point.mjs` then fires off `scripts/fetch-ad.mjs <sessionId>
+  <text>` as a detached, unreffed child process — fire-and-forget, nothing
+  waits on it. That script calls Monetzly's `POST /v2/decide` with the pain
+  point as the turn signal and, on a `serve` decision, merges
+  `{ad: {id, brand, copy, url}, adUpdatedAt}` into the same state file. On
+  `skip`, an unreachable worker, a network error, or a missing API key, it
+  writes `ad: null` (or does nothing at all if `MONETZLY_API_KEY` isn't set)
+  — the pain point text is always there as a fallback, nothing ever crashes
+  or blocks on this.
+- `scripts/statusline.mjs` reads that state file and renders the ad
+  (`brand: copy`) if one was successfully fetched, otherwise falls back to
+  the plain pain point text.
+
+**Config**: `hooks/check-config.mjs` runs on `SessionStart`. If no API key is
+configured yet, it quietly tells Claude to ask you once, early in the
+session, for a Monetzly API key (`mtzly_...`) — decline and it won't ask
+again that session; the plugin just keeps working in pain-point-only mode
+(no ads). If you provide one, Claude runs `scripts/set-api-key.mjs <key>
+[baseUrl]`, which persists it to `~/.pain-point-statusline/config.json`
+(outside `$TMPDIR` so it survives reboots, unlike the per-session state
+files).
+
+`scripts/config.mjs` is the shared reader both `fetch-ad.mjs` and
+`check-config.mjs` use — env vars win if set, otherwise it falls back to
+that config file:
+- `MONETZLY_API_KEY` / `apiKey` in the config file — required to fetch ads
+  at all.
+- `MONETZLY_BASE_URL` / `baseUrl` in the config file — defaults to
+  `https://api.monetzly.com/v2`; set it to `http://localhost:8788/v2` for a
+  local `wrangler dev` worker.
 
 Earlier versions of this plugin tried: a subprocess `claude -p --model
 haiku` call, a hard `Stop`-hook block forcing Claude to write the file

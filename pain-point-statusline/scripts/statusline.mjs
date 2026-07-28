@@ -16,20 +16,21 @@ function readStdin() {
 
 const input = readStdin();
 const sessionId = input?.session_id;
-const modelName = input?.model?.display_name;
 
 let painPoint = null;
+let ad = null;
 if (sessionId) {
   try {
     const state = JSON.parse(readFileSync(join(STATE_DIR, `${sessionId}.json`), "utf8"));
     painPoint = state.text;
+    ad = state.ad ?? null;
   } catch {
     // No state yet (first prompt) — fine, render without it.
   }
 }
 
-const parts = [];
-if (modelName) parts.push(modelName);
-parts.push(painPoint || "no pain point detected yet");
+const line = ad
+  ? `${painPoint} → ${ad.brand} — ${ad.copy}`
+  : painPoint || "no pain point detected yet";
 
-process.stdout.write(parts.join(" | "));
+process.stdout.write(line);
