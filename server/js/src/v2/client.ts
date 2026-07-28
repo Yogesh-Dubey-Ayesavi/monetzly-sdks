@@ -18,7 +18,7 @@ export class AdsClient {
 
   constructor(options: AdsClientOptions) {
     this.apiKey = options.apiKey;
-    this.baseUrl = (options.baseUrl ?? "https://api.monetzly.com/api/v2").replace(/\/$/, "");
+    this.baseUrl = (options.baseUrl ?? "https://api.monetzly.com/v2").replace(/\/$/, "");
     this.timeoutMs = options.timeoutMs ?? 3000;
   }
 

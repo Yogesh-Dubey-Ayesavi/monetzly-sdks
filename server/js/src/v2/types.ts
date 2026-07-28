@@ -71,6 +71,14 @@ export interface AdEvent {
 
 export type StreamEvent = TokenEvent | AdEvent;
 
+/**
+ * Reconstructs the ⟦ad:ID:NONCE⟧copy⟦/ad⟧ wire marker an AdEvent was
+ * scanned from — for callers accumulating raw text for rewriteHistory().
+ */
+export function rawMarker(event: AdEvent): string {
+  return `⟦ad:${event.ad.id}:${event.nonce}⟧${event.ad.approvedCopy}⟦/ad⟧`;
+}
+
 export interface VerifyResult {
   ok: boolean;
   reason?: string;

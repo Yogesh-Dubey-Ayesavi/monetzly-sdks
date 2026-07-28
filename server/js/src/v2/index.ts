@@ -3,6 +3,7 @@
  * Decision API client, prompt fragment builder, stream scanner/verifier,
  * and history rewriter. No gRPC; uses native fetch (Node 18+).
  */
+export * as adapters from "./adapters/index.js";
 export { AdsClient } from "./client.js";
 export type { AdsClientOptions } from "./client.js";
 export { buildFactsFragment, buildFragment } from "./fragment.js";
@@ -18,6 +19,7 @@ export {
   CLOSE_MARKER,
   Decision,
   eventToWire,
+  rawMarker,
 } from "./types.js";
 export type {
   Ad,

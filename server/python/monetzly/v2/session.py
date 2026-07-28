@@ -1,7 +1,7 @@
 """
 High-level Mode B session API.
 
-    mz = Monetzly(api_key="...", base_url="http://localhost:8080/api/v2")
+    mz = Monetzly(api_key="...", base_url="http://localhost:8080/v2")
     session = mz.session(session_id=conversation_id)
 
     decision = await session.decide(user_message)
@@ -48,6 +48,32 @@ class MonetzlySession:
     def augment_system_prompt(self, base_prompt: str,
                               decision: Optional[Decision]) -> str:
         return base_prompt + build_fragment(decision)
+
+    async def prepare_ad(self, user_message: str) -> Optional[Decision]:
+        """Alias for decide(). Use case: the query-level step — call this
+        once per user turn, before building the prompt or calling the
+        model, to find out which ad (if any) is eligible this turn."""
+        return await self.decide(user_message)
+
+    def prepare_prompt(self, base_prompt: str,
+                       decision: Optional[Decision]) -> str:
+        """Alias for augment_system_prompt(). Use case: the prompt-level
+        step — merges your static system prompt (guidelines: how/when to
+        include a sponsored suggestion) with the turn-specific ad fragment
+        from prepare_ad()'s Decision. Your base_prompt itself can be defined
+        once and reused across turns; only this merge happens per turn."""
+        return self.augment_system_prompt(base_prompt, decision)
+
+    def watch(self, model_stream: AsyncIterator[str],
+             decision: Optional[Decision]
+             ) -> AsyncIterator[Union[TokenEvent, AdEvent]]:
+        """Alias for stream(). Use case: wrap the model's raw output stream
+        to scan for the ad marker, verify it against the Decision, bill the
+        impression, and yield clean TokenEvent/AdEvent chunks. Only the node
+        producing the user-facing reply should call this — internal/agent
+        hops in a multi-step workflow never see raw model output through
+        here."""
+        return self.stream(model_stream, decision)
 
     async def stream(self, model_stream: AsyncIterator[str],
                      decision: Optional[Decision]
@@ -97,7 +123,7 @@ class MonetzlySession:
 
 class Monetzly:
     def __init__(self, api_key: str,
-                 base_url: str = "https://api.monetzly.com/api/v2",
+                 base_url: str = "https://api.monetzly.com/v2",
                  timeout: float = 3.0):
         self._client = AdsClient(api_key=api_key, base_url=base_url,
                                  timeout=timeout)

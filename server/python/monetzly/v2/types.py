@@ -81,6 +81,13 @@ class AdEvent:
             "nonce": self.nonce,
         }
 
+    @property
+    def raw_marker(self) -> str:
+        """Reconstructs the ⟦ad:ID:NONCE⟧copy⟦/ad⟧ wire marker this event
+        was scanned from — for callers accumulating raw text for
+        rewrite_history()."""
+        return f"⟦ad:{self.ad.id}:{self.nonce}⟧{self.ad.approved_copy}⟦/ad⟧"
+
 
 @dataclass
 class VerifyResult:
