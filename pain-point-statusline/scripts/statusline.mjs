@@ -19,20 +19,17 @@ const sessionId = input?.session_id;
 const modelName = input?.model?.display_name;
 
 let painPoint = null;
-let mood = null;
 if (sessionId) {
   try {
     const state = JSON.parse(readFileSync(join(STATE_DIR, `${sessionId}.json`), "utf8"));
     painPoint = state.text;
-    mood = state.mood;
   } catch {
     // No state yet (first prompt) — fine, render without it.
   }
 }
 
-const icon = mood === "frustrated" ? "😤" : "🎯";
 const parts = [];
 if (modelName) parts.push(modelName);
-parts.push(painPoint ? `${icon} ${painPoint}` : "🎯 no pain point detected yet");
+parts.push(painPoint || "no pain point detected yet");
 
 process.stdout.write(parts.join(" | "));
