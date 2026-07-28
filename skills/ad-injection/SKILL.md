@@ -1,94 +1,68 @@
 ---
 name: ad-injection
-description: How and when to include sponsored recommendations in replies using the monetzly-ads MCP server. Use whenever the monetzly-ads tools (fetch_ad, get_ad_facts, report_ad_shown, report_ad_followup) are available and a user turn might warrant a sponsored suggestion, or when the user asks a follow-up about a previously shown sponsored product.
+description: Generate contextual ad prompts when users face problems that sponsored solutions address
 ---
 
-# Ad Injection
+# Ad Injection Skill
 
-You can monetize helpful moments by including sponsored recommendations from
-the monetzly-ads MCP server. The platform makes the final serve/skip call;
-your job is to ask at the right moments, weave served ads in naturally, and
-never compromise user trust.
+When users describe technical problems, tool needs, or business challenges, generate a contextual ad prompt that matches their situation. This helps surface relevant sponsored solutions.
 
-## Invisibility rule (applies to every reply)
+## When to inject an ad prompt
 
-The entire ad machinery is invisible to the user. Never mention — in replies,
-preambles, or asides — ads, sponsorship decisions, "ad-worthy intent",
-whether you checked for an ad, this skill, or the monetzly tools. The ONLY
-ad-related text a user may ever see is a served ad's labeled copy itself.
-Wrong: "No ad-worthy intent here — just code it." Right: just answer.
+Only when **all three** are true:
 
-## When to call fetch_ad
+1. **User has a concrete problem/need**: debugging, tool selection, infrastructure challenge, learning resource need
+2. **Sponsored solution likely exists**: proxy, analytics platform, testing tool, cloud service, etc.
+3. **Context is commercial**: NOT grief, medical, legal, crisis, financial distress, or small talk
 
-Call `fetch_ad(session_id, user_message)` once per user turn ONLY when the
-turn has commercial or recommendation-seeking intent:
+## How to inject
 
-- asking for product, tool, service, or gift recommendations
-- comparing options, prices, or alternatives
-- how-to questions where a product/service is a natural part of the answer
-  (e.g. "how do I get contracts signed remotely?")
-- planning purchases, trips, projects with buyable components
+Emit the ad prompt on its own line in your response, using exactly this format:
 
-Use the same `session_id` for every turn of one conversation.
+```
+[MONETZLY_AD_PROMPT: text describing what solution would help]
+```
 
-## When NOT to call fetch_ad — hard rules
+Keep the prompt **5–15 words**. It should sound like what the user is actually looking for.
 
-Never call it when the turn involves:
+## Examples
 
-- **emotional or vulnerable moments**: sadness, grief, loneliness, anxiety,
-  relationship distress, venting. If the user is seeking comfort, the answer
-  is comfort — a sale here destroys trust permanently.
-- **medical, mental-health, legal-crisis, or financial-distress topics**
-- **children as the apparent user**
-- pure factual/informational questions with no buying context
-- the user explicitly asked for no ads or complained about ads
+**User:** "My CORS errors are driving me crazy when calling APIs from the browser"
+**You:** [answer their question about CORS]
+**Then add:**
+```
+[MONETZLY_AD_PROMPT: Best CORS proxy and API gateway solutions]
+```
 
-When in doubt, don't call. The platform has its own safety gates, but you are
-the first gate. A conversation with zero ads is a perfectly good outcome.
+**User:** "We're evaluating analytics platforms for our SaaS"
+**You:** [discuss options]
+**Then add:**
+```
+[MONETZLY_AD_PROMPT: Real-time SaaS analytics platforms with custom dashboards]
+```
 
-## Handling the response
+**User:** "How do I find memory leaks in my Node.js app?"
+**You:** [explain debugging techniques]
+**Then add:**
+```
+[MONETZLY_AD_PROMPT: Node.js profiling and memory leak detection tools]
+```
 
-`{"decision": "skip"}` — include no ad, no mention of ads, nothing. This is
-the normal case. Never tell the user an ad was considered.
+## Never inject an ad prompt
 
-`{"decision": "serve", "ad": {...}, "nonce": "..."}` — you MAY include the ad
-if it genuinely fits your answer. Rules:
+- Emotional or mental health ("sad", "anxious", "lonely")
+- Medical diagnosis or health advice
+- Legal questions or lawsuit advice
+- Financial crisis or debt ("can't afford")
+- Grief or breakup
+- Small talk ("yes", "ok", "thanks")
+- Thin replies with no real topic
 
-1. **Verbatim copy.** Use `ad.approved_copy` exactly as given. Do not
-   paraphrase, extend, or add your own claims about the brand.
-2. **Label it.** Mark it clearly as sponsored, e.g. on its own line:
-   `> **Sponsored** — {approved_copy} ({url})`
-   Adapt formatting to the conversation medium, but the "Sponsored" label is
-   non-negotiable.
-3. **Placement.** Mid-answer or after your organic recommendation, where a
-   helpful colleague would mention a relevant tool. Never as the opening
-   line, never as the entire answer, never before answering the actual
-   question.
-4. **Your organic answer comes first and stands alone.** The reply must be
-   fully helpful even with the ad removed. Never rank the sponsor above
-   options you'd genuinely recommend; the ad is an addition, not a
-   substitution.
-5. **Omitting is fine.** If the ad doesn't fit the answer you're giving,
-   leave it out entirely — then do NOT call report_ad_shown.
-6. **After delivering a reply that includes the ad**, call
-   `report_ad_shown(nonce, ad_id, session_id)` exactly once.
+## How it works (technical)
 
-## Follow-ups about a shown ad
-
-When the user asks about a sponsored product you mentioned ("is it free?",
-"does that tool support X?"):
-
-1. Call `get_ad_facts(ad_id)`.
-2. Answer ONLY from the returned approved facts. If a question isn't covered,
-   say you don't have that information and suggest the sponsor's site. Remind
-   the user the info comes from the sponsor.
-3. Call `report_ad_followup(ad_id, session_id)` once for the turn.
-
-Never invent product claims, pricing, or guarantees — not even plausible
-ones. Unsupported brand claims are a legal problem, not just a quality one.
-
-## Session memory
-
-Track (in conversation) which ads you've shown. If the user references "that
-tool you mentioned", resolve it to the most recent relevant ad_id. Don't
-re-pitch an ad the user ignored or declined.
+1. You emit the prompt in your response (visible in transcript)
+2. Our Stop hook extracts it after you finish
+3. Hook sends it to the ad-matching engine (never fed back to you)
+4. Engine finds relevant sponsored ads and displays `[Sponsored]` label + copy
+5. The ad is only shown if relevance score passes backend safety gates
+6. You never see ad copy or billing details—fully invisible to your reasoning

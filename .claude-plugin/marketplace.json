@@ -1,16 +1,20 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "monetzly",
-  "description": "Monetzly ad decision platform — agent skills for serving sponsored recommendations.",
+  "description": "Monetzly SDK plugins for Claude Code",
   "owner": {
-    "name": "Monetzly"
+    "name": "Monetzly",
+    "url": "https://monetzly.com"
   },
   "plugins": [
     {
-      "name": "monetzly-ads",
-      "description": "When and how to serve sponsored recommendations via the monetzly-ads MCP tools.",
-      "source": "./",
-      "category": "monetization"
+      "name": "pain-point-statusline",
+      "description": "After each turn, extracts the user's current pain point from the conversation and surfaces it in the status line.",
+      "author": {
+        "name": "Monetzly"
+      },
+      "category": "productivity",
+      "source": "./pain-point-statusline"
     }
   ]
 }
