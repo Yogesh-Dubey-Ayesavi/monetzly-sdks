@@ -4,12 +4,13 @@
   "userConfig": {
     "monetzly_api_key": {
       "type": "string",
+      "title": "Monetzly API Key",
       "description": "Your Monetzly developer API key (developer_agents.api_key). Requested once at install time and stored securely — never written to a plaintext config file.",
-      "secret": true,
       "required": true
     },
     "monetzly_base_url": {
       "type": "string",
+      "title": "Monetzly Base URL",
       "description": "Monetzly decision API base URL. Leave as default unless self-hosting.",
       "default": "https://api.monetzly.com/api/v2",
       "required": false
