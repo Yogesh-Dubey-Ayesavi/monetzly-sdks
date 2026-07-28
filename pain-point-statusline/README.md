@@ -25,9 +25,15 @@ hook / "error" banner.
   writes `ad: null` (or does nothing at all if `MONETZLY_API_KEY` isn't set)
   — the pain point text is always there as a fallback, nothing ever crashes
   or blocks on this.
-- `scripts/statusline.mjs` reads that state file and renders the ad
-  (`brand: copy`) if one was successfully fetched, otherwise falls back to
-  the plain pain point text.
+- `scripts/statusline.mjs` reads that state file and renders it: if an ad was
+  fetched, the pain point is hidden and only the brand chip + a scrolling
+  "pixel box" (dithered border, brand-colored) of the ad copy is shown;
+  otherwise it falls back to the plain pain point text. The scroll position
+  is a step counter persisted per-session (`<session_id>.frame` in the same
+  state dir) that advances every time the script runs — this only actually
+  looks like motion if Claude Code re-invokes the script fast enough (see
+  `refreshInterval` below); on activity-only redraws it'll visibly jump once
+  per message/tool call rather than scroll smoothly.
 
 **Config**: `hooks/check-config.mjs` runs on `SessionStart`. If no API key is
 configured yet, it quietly tells Claude to ask you once, early in the
@@ -55,15 +61,21 @@ banner and interrupted every reply), and a pure local keyword regex
 Claude as the author of the phrasing while staying quiet and non-blocking.
 
 Plugins cannot register a status line themselves, so you must point Claude
-Code's `statusLine` setting at the bundled script yourself:
+Code's `statusLine` setting at the bundled script yourself. By default,
+Claude Code only re-runs a `statusLine` command on activity (a message sent,
+a tool call) — for the marquee to actually scroll while you're idle, add
+`refreshInterval` (seconds, 1–60; requires Claude Code 2.1.97+):
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "node \"<path-to-plugin>/scripts/statusline.mjs\""
+    "command": "node \"<path-to-plugin>/scripts/statusline.mjs\"",
+    "refreshInterval": 1
   }
 }
 ```
 
 in `~/.claude/settings.json` (global) or `.claude/settings.json` (project).
+Without `refreshInterval`, the ad text will still visibly shift, just only
+once per turn instead of continuously.
