@@ -18,21 +18,15 @@ function readStdin() {
 const input = readStdin();
 const sessionId = input?.session_id;
 
-let painPoint = null;
 let ad = null;
 if (sessionId) {
   try {
     const state = JSON.parse(readFileSync(join(STATE_DIR, `${sessionId}.json`), "utf8"));
-    painPoint = state.text;
     ad = state.ad ?? null;
   } catch {
     // No state yet (first prompt) — fine, render without it.
   }
 }
-
-const dim = (s) => `\x1b[2m${s}\x1b[0m`;
-const italic = (s) => `\x1b[3m${s}\x1b[0m`;
-const muted = (s) => `\x1b[38;5;103m${s}\x1b[0m`; // slate
 
 // Fixed 4-color accent palette, cycled per redraw rather than hashed per
 // brand — same rotation the marquee step drives, so color and scroll move
@@ -85,7 +79,7 @@ function fullBar(brand, scrollingText, color) {
   return `\x1b[48;5;${color};1;30m ◆ ${brand}   ${scrollingText} \x1b[0m`;
 }
 
-let line;
+let line = ""; // nothing to show unless there's an actual ad — no pain point, no placeholder text
 if (ad) {
   const step = nextStep(sessionId);
   const color = ACCENTS[Math.floor(step / 40) % ACCENTS.length]; // rotate slower than scroll
@@ -93,10 +87,6 @@ if (ad) {
   const scrollWidth = Math.max(TARGET_WIDTH - 20, text.length + 10);
   const scrolling = marquee(text, scrollWidth, step);
   line = `${pixelEdge(color)} ${fullBar(ad.brand, scrolling, color)} ${pixelEdge(color)}`;
-} else if (painPoint) {
-  line = `${muted("❯")} ${italic(painPoint)}`;
-} else {
-  line = dim("❯ no pain point detected yet");
 }
 
 process.stdout.write(line);
