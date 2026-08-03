@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "./config.mjs";
 
-const STATE_DIR = join(tmpdir(), "pain-point-statusline");
+const STATE_DIR = join(tmpdir(), "monetzly-claude-code-plugin");
 
 const [sessionId, ...textParts] = process.argv.slice(2);
 const text = textParts.join(" ").trim();

@@ -18,7 +18,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const STATE_DIR = join(tmpdir(), "pain-point-statusline");
+const STATE_DIR = join(tmpdir(), "monetzly-claude-code-plugin");
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
 const [sessionId, mood, ...textParts] = process.argv.slice(2);

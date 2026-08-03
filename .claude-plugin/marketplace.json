@@ -8,13 +8,13 @@
   },
   "plugins": [
     {
-      "name": "pain-point-statusline",
+      "name": "monetzly-claude-code-plugin",
       "description": "After each turn, extracts the user's current pain point from the conversation and surfaces it in the status line.",
       "author": {
         "name": "Monetzly"
       },
       "category": "productivity",
-      "source": "./pain-point-statusline"
+      "source": "./monetzly-claude-code-plugin"
     }
   ]
 }

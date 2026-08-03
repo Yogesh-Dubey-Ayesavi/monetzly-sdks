@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const STATE_DIR = join(tmpdir(), "pain-point-statusline");
+const STATE_DIR = join(tmpdir(), "monetzly-claude-code-plugin");
 const TARGET_WIDTH = 200; // approx full-width target; statusLine input doesn't expose real terminal cols
 
 function readStdin() {
@@ -72,11 +72,36 @@ function marquee(text, width, step) {
   return repeated.slice(tick, tick + width);
 }
 
-// One continuous colored bar — brand pill and scrolling copy share the same
-// background, instead of a colored chip butting up against a separate dark
-// box (which read as two disconnected pieces in the middle of the line).
+// The host that renders this (VS Code's Claude Code panel) collapses every
+// background-color segment in a line into one flat highlight -- a two-tone
+// powerline chip is wasted effort there, only weight/italic survive. So:
+// one flat accent pill, all hierarchy done with bold vs. dim/italic text,
+// no separate "ad" label cluttering it.
 function fullBar(brand, scrollingText, color) {
-  return `\x1b[48;5;${color};1;30m ◆ ${brand}   ${scrollingText} \x1b[0m`;
+  const bg = `\x1b[48;5;${color}m`;
+  const black = `\x1b[38;5;16m`;
+  const dim = `\x1b[38;5;238m`;
+  const bold = `\x1b[1m`;
+  const italic = `\x1b[3m`;
+  const reset = `\x1b[0m`;
+
+  const brandChip = `${bg}${black}${bold} \u2726 ${brand}${reset}`;
+  // Box-drawing bars (\u2502/\u2503) render as a hairline with no real weight in this
+  // host's font, bold or not. The interpunct already proven to render fine
+  // elsewhere in this bar (marquee separators) is the safer bet.
+  const divider = `${bg}${dim}${bold} \u00b7 ${reset}`;
+  const copy = `${bg}${black}${italic} ${scrollingText} ${reset}`;
+
+  return `${brandChip}${divider}${copy}`;
+}
+
+// OSC 8 hyperlink — wraps the *whole rendered segment* (not the raw scrolling
+// text) so marquee slicing never cuts the escape sequence itself. Terminal
+// support varies (iTerm2/Kitty/WezTerm/VS Code yes, tmux/some native
+// emulators no) — falls back to plain unclickable text there, harmless.
+function hyperlink(url, text) {
+  if (!url) return text;
+  return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
 }
 
 let line = ""; // nothing to show unless there's an actual ad — no pain point, no placeholder text
@@ -85,8 +110,14 @@ if (ad) {
   const color = ACCENTS[Math.floor(step / 40) % ACCENTS.length]; // rotate slower than scroll
   const text = ad.url ? `${ad.copy} · ${ad.url}` : ad.copy; // copy + url scroll as one continuous stream
   const scrollWidth = Math.max(TARGET_WIDTH - 20, text.length + 10);
-  const scrolling = marquee(text, scrollWidth, step);
-  line = `${pixelEdge(color)} ${fullBar(ad.brand, scrolling, color)} ${pixelEdge(color)}`;
+  // Slice on plain text first — inserting the underline escape before
+  // marquee() would let it get cut mid-sequence at the wrap boundary.
+  let scrolling = marquee(text, scrollWidth, step);
+  if (ad.url) {
+    scrolling = scrolling.split(ad.url).join(`\x1b[4m${ad.url}\x1b[24m`);
+  }
+  const bar = `${pixelEdge(color)} ${fullBar(ad.brand, scrolling, color)} ${pixelEdge(color)}`;
+  line = ad.url ? hyperlink(ad.url, bar) : bar;
 }
 
 process.stdout.write(line);

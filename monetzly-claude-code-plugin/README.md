@@ -1,21 +1,27 @@
-# pain-point-statusline
+# monetzly-claude-code-plugin
 
 Claude Code plugin. Claude itself judges and writes the pain point — no
 regex/heuristic guessing, no subprocess model call, and no blocking Stop
 hook / "error" banner.
 
 - `hooks/nudge-pain-point.mjs` runs on `UserPromptSubmit`, right before
-  Claude sees your new message. It never blocks — it just injects a quiet
-  `additionalContext` instruction telling Claude to record its own
-  first-person judgment of the *previous* exchange (e.g. "I'm feeling
-  frustrated", "I need a reliable proxy") via one silent Bash call, before
-  answering the new message. Nothing about this is narrated to you.
-- That Bash call runs `scripts/record-pain-point.mjs <sessionId>
-  <frustrated|neutral> [phrase]`, which writes `{text, mood, updatedAt}` to
-  `$TMPDIR/pain-point-statusline/<session_id>.json`. On a neutral turn, if a
-  pain point is already recorded, the file is left untouched — the last
-  real pain point stays displayed until Claude actually detects a new one,
-  it never resets to null just because a turn was neutral.
+  Claude sees your new message. It never blocks — it just injects a thin
+  `additionalContext` pointer (session ID + plugin root) telling Claude to
+  use the `pain-point-tracker` skill. Nothing about this is narrated to you.
+- `skills/pain-point-tracker/SKILL.md` holds the actual judgment logic (the
+  three cases: real problem → frustrated, evidenced want → neutral-with-
+  phrase, nothing concrete → still a light neutral suggestion, never blank)
+  and the command template. Keeping this in a skill file rather than baked
+  into the hook script means it can be read, edited, and reasoned about on
+  its own — the hook stays a dumb pointer with the two bits of dynamic state
+  a static skill file can't know (session ID, plugin root).
+- Following the skill, Claude runs `scripts/record-pain-point.mjs
+  <sessionId> <frustrated|neutral> [phrase]`, which writes `{text, mood,
+  updatedAt}` to `$TMPDIR/monetzly-claude-code-plugin/<session_id>.json`. On a
+  neutral turn, if a pain point is already recorded, the file is left
+  untouched — the last real pain point stays displayed until Claude actually
+  detects a new one, it never resets to null just because a turn was
+  neutral.
 - `record-pain-point.mjs` then fires off `scripts/fetch-ad.mjs <sessionId>
   <text>` as a detached, unreffed child process — fire-and-forget, nothing
   waits on it. That script calls Monetzly's `POST /v2/decide` with the pain
@@ -26,21 +32,22 @@ hook / "error" banner.
   — the pain point text is always there as a fallback, nothing ever crashes
   or blocks on this.
 - `scripts/statusline.mjs` reads that state file and renders it: if an ad was
-  fetched, the pain point is hidden and only the brand chip + a scrolling
-  "pixel box" (dithered border, brand-colored) of the ad copy is shown;
-  otherwise it falls back to the plain pain point text. The scroll position
-  is a step counter persisted per-session (`<session_id>.frame` in the same
-  state dir) that advances every time the script runs — this only actually
-  looks like motion if Claude Code re-invokes the script fast enough (see
-  `refreshInterval` below); on activity-only redraws it'll visibly jump once
-  per message/tool call rather than scroll smoothly.
+  fetched, it shows a full-width colored pill (brand + a continuously
+  scrolling stream of the ad copy and URL, bookended by a small pixel-glyph
+  mark) — never the raw pain point text. If there's no ad yet, the status
+  line renders **nothing at all**, not even a placeholder. The scroll
+  position is a step counter persisted per-session (`<session_id>.frame` in
+  the same state dir) that advances every time the script runs — this only
+  actually looks like motion if Claude Code re-invokes the script fast
+  enough (see `refreshInterval` below); on activity-only redraws it'll
+  visibly jump once per message/tool call rather than scroll smoothly.
 
 **Config**: `hooks/check-config.mjs` runs on `SessionStart`. If no API key is
 configured yet, it quietly tells Claude to ask you once, early in the
 session, for a Monetzly API key (`mtzly_...`) — decline and it won't ask
 again that session; the plugin just keeps working in pain-point-only mode
 (no ads). If you provide one, Claude runs `scripts/set-api-key.mjs <key>
-[baseUrl]`, which persists it to `~/.pain-point-statusline/config.json`
+[baseUrl]`, which persists it to `~/.monetzly-claude-code-plugin/config.json`
 (outside `$TMPDIR` so it survives reboots, unlike the per-session state
 files).
 
