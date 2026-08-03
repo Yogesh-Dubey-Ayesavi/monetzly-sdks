@@ -11,7 +11,7 @@ line shows nothing at all.
 ## Install
 
 ```bash
-claude plugin marketplace add ./sdks   # run from the repo root
+claude plugin marketplace add Yogesh-Dubey-Ayesavi/monetzly-sdks
 claude plugin install monetzly-claude-code-plugin@monetzly
 ```
 
