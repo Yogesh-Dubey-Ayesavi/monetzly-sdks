@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// CLI Claude runs (via Bash) once, the first time it asks the user for their
-// Monetzly API key (see hooks/check-config.mjs):
+// CLI Codex runs (via shell) once, the first time it asks the user for their
+// Monetzly API key (see scripts/check-config.mjs):
 //   node set-api-key.mjs <mtzly_...> [baseUrl]
 // Persists to the same global config file the VSCode extension and the
 // standalone `monetzly` CLI use (see config.mjs) — outside $TMPDIR so it
@@ -15,4 +15,4 @@ if (!apiKey) {
 }
 
 saveConfig({ apiKey, ...(baseUrl ? { baseUrl } : {}) });
-console.log("Saved — this key now applies to the terminal statusline, the VSCode extension, and the monetzly CLI.");
+console.log("Saved — this key now applies to Codex, the VSCode extension, and the monetzly CLI.");

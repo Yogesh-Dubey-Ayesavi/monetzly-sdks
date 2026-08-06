@@ -1,0 +1,21 @@
+{
+  "name": "monetzly-cli",
+  "version": "1.0.0",
+  "description": "Reads/writes Monetzly's global (machine-level) config — API key, base URL. Used standalone via npx, and bundled directly into the Monetzly VSCode extension.",
+  "type": "module",
+  "bin": {
+    "monetzly": "./bin/cli.js"
+  },
+  "main": "./src/config.mjs",
+  "exports": {
+    ".": "./src/config.mjs",
+    "./paths": "./src/paths.mjs"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yogesh-Dubey-Ayesavi/monetzly-sdks.git",
+    "directory": "monetzly-cli"
+  },
+  "files": ["bin", "src"]
+}

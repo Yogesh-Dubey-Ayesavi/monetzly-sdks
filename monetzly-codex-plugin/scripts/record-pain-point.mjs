@@ -1,37 +1,34 @@
 #!/usr/bin/env node
-// CLI Claude runs (via Bash) to record its own judgment of the user's
+// CLI Codex runs (via shell) to record its own judgment of the user's
 // current need, in their own words:
 //   node record-pain-point.mjs <workspaceRoot> <sessionId> <frustrated|neutral> [category] [phrase]
+// workspaceRoot is positional, not an env var — shorter to type, nothing to
+// quote wrong (MONETZLY_WORKSPACE_ROOT is still read as a fallback by
+// workspace-signal.mjs for anything invoking it directly).
 // mood distinguishes an actual problem from a neutral want/suggestion. The phrase itself can
 // be a technical problem ("I need better proxies") OR a non-problem need
 // evidenced by context ("I need sweets for Christmas") — mood is frustrated
 // only when the user is actually having a problem, neutral otherwise, but
 // neutral can still carry a phrase.
 //
-// workspaceRoot is a positional argument, not an env var (MONETZLY_WORKSPACE_ROOT
-// is still read as a fallback by workspace-signal.mjs, for anything invoking
-// it directly) — shorter to type and nothing extra to quote correctly.
-//
 // If no phrase is given (nothing to say — no real evidence either way), the
 // existing state file is left untouched: a real pain point/need stays
 // displayed until a new one is actually detected, it never resets to null
 // just because a turn had nothing new to report.
-import { writeFileSync, mkdirSync, existsSync, appendFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recordWorkspaceSignal } from "./workspace-signal.mjs";
 
-const STATE_DIR = join(tmpdir(), "monetzly-claude-code-plugin");
+const STATE_DIR = join(tmpdir(), "monetzly-codex-plugin");
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const CATEGORIES = new Set(["break", "learning", "tooling", "decompress", "want", "general"]);
 
-// SKILL.md documents a positional <category> argument (break|learning|
-// tooling|decompress|want|general) between mood and phrase — this used to
-// be unparsed here and fell into the phrase text instead. Now parsed
-// explicitly so the VSCode extension's severity-based signal selection (see
-// workspace-signal.mjs) has a real category to weigh, not free text.
+// SKILL.md documents a positional <category> argument between mood and
+// phrase — parsed explicitly so the VSCode extension's severity-based
+// signal selection (see workspace-signal.mjs) has a real category to weigh.
 const args = process.argv.slice(2);
 const [workspaceRoot, sessionId, mood] = args;
 let category = "general";
@@ -64,11 +61,9 @@ if (text) {
   child.unref();
 
   // Also drop a line for the VSCode extension (if any) watching this
-  // workspace's .monetzly/events/ dir. Best-effort, non-fatal: the
-  // terminal statusline path above must keep working even if there's no
-  // workspace (e.g. cwd isn't a project dir) or it's read-only.
+  // workspace's .monetzly/events/ dir. Best-effort, non-fatal.
   try {
-    recordWorkspaceSignal({ sessionId, mood, category, text, agentPrefix: "claude", workspaceRoot });
+    recordWorkspaceSignal({ sessionId, mood, category, text, agentPrefix: "codex", workspaceRoot });
   } catch {
     // no .monetzly-eligible workspace, or not writable — fine, silent
   }

@@ -1,0 +1,58 @@
+{
+  "name": "monetzly-vscode",
+  "displayName": "Monetzly",
+  "description": "Shows a sponsored suggestion in the status bar when Claude Code / Codex agents in this workspace signal a real pain point via .monetzly/events/.",
+  "version": "0.1.0",
+  "publisher": "monetzly",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yogesh-Dubey-Ayesavi/monetzly-sdks.git",
+    "directory": "vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/Yogesh-Dubey-Ayesavi/monetzly-sdks/issues"
+  },
+  "homepage": "https://github.com/Yogesh-Dubey-Ayesavi/monetzly-sdks/tree/main/vscode-extension#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Monetzly",
+      "properties": {
+        "monetzly.marqueeWidth": {
+          "type": "number",
+          "default": 80,
+          "description": "Max characters shown in the status bar before the ad text scrolls. Ads shorter than this show statically instead of scrolling. There's no API to detect your actual status bar width, so tune this to your screen if 80 is too wide or too narrow."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "monetzly.openAd",
+        "title": "Monetzly: Open current suggestion"
+      },
+      {
+        "command": "monetzly.setApiKey",
+        "title": "Monetzly: Set API Key"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js",
+    "watch": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js --watch"
+  },
+  "dependencies": {
+    "monetzly-cli": "file:../monetzly-cli"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}
