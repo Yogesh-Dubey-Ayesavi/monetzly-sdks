@@ -1,10 +1,14 @@
 #!/usr/bin/env node
-// statusLine command: reads the state file written by the Stop hook and renders it.
-import { readFileSync, writeFileSync } from "node:fs";
+// statusLine command: reads the ad state the `monetzly` CLI wrote (via
+// record-pain-point.mjs -> `monetzly signal`) and renders it. Reads from
+// the project root's .monetzly/ads/, not $TMPDIR — the same file the CLI
+// and, in principle, any other consumer of that project's state would
+// read, instead of a plugin-private scratch file.
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const STATE_DIR = join(tmpdir(), "monetzly-claude-code-plugin");
+const FRAME_STATE_DIR = join(tmpdir(), "monetzly-claude-code-plugin"); // only the scroll/color frame counter lives here — cosmetic, fine to lose on reboot
 const TARGET_WIDTH = 200; // approx full-width target; statusLine input doesn't expose real terminal cols
 
 function readStdin() {
@@ -17,14 +21,16 @@ function readStdin() {
 
 const input = readStdin();
 const sessionId = input?.session_id;
+const workspaceRoot = input?.cwd || input?.workspace?.project_dir || input?.workspace?.current_dir;
 
 let ad = null;
-if (sessionId) {
+if (sessionId && workspaceRoot) {
   try {
-    const state = JSON.parse(readFileSync(join(STATE_DIR, `${sessionId}.json`), "utf8"));
+    const statePath = join(workspaceRoot, ".monetzly", "ads", `claude-${sessionId}.json`);
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
     ad = state.ad ?? null;
   } catch {
-    // No state yet (first prompt) — fine, render without it.
+    // No state yet (first prompt, or decide() hasn't resolved) — fine, render without it.
   }
 }
 
@@ -49,7 +55,7 @@ function pixelEdge(color) {
 // is showing, so the whole thing feels alive together.
 const STEP = 2;
 function nextStep(sessionId) {
-  const framePath = join(STATE_DIR, `${sessionId}.frame`);
+  const framePath = join(FRAME_STATE_DIR, `${sessionId}.frame`);
   let step = 0;
   try {
     step = parseInt(readFileSync(framePath, "utf8"), 10) || 0;
@@ -57,6 +63,7 @@ function nextStep(sessionId) {
     step = 0;
   }
   try {
+    mkdirSync(FRAME_STATE_DIR, { recursive: true });
     writeFileSync(framePath, String(step + STEP));
   } catch {
     // non-fatal — worst case the marquee/color just doesn't advance this frame

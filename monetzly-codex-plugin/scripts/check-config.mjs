@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { loadConfig } from "./config.mjs";
 import { ensureGitExcluded } from "./workspace-dir.mjs";
+import { installCli } from "./install-cli.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -19,6 +20,10 @@ function readStdin() {
     return null;
   }
 }
+
+// Installs/self-heals the `monetzly` binary + PATH every session (cheap,
+// see install-cli.mjs) before anything else needs it.
+installCli();
 
 // Run unconditionally, before the API-key early-exit below: the repo
 // should be clean of .monetzly/ in `git status` from turn one, not only

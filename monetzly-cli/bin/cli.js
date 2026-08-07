@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { readConfig, writeConfig, resolveConfig } from "../src/config.mjs";
 import { getGlobalStateDir } from "../src/paths.mjs";
-import { recordSignal } from "../src/workspace.mjs";
+import { recordSignal, fireDecideAndPersist, adStatePath } from "../src/workspace.mjs";
+import { readFileSync } from "node:fs";
 
 const [command, ...rest] = process.argv.slice(2);
 
@@ -13,14 +14,38 @@ function usage() {
       "  config set-key <apiKey> [baseUrl]   store the API key (and optionally base URL)",
       "  config show                          print the resolved config (key redacted)",
       "  config path                          print the global config file path",
-      "  signal <frustrated|neutral> <category> <phrase>",
-      "                                        record a pain-point signal for the VSCode",
-      "                                        extension to pick up, in the current directory",
+      "  signal <frustrated|neutral> <category> <phrase> [--root <path>] [--session <id>] [--agent <prefix>]",
+      "                                        record a pain-point signal (default root: cwd,",
+      "                                        default session: a fresh id, default agent: cli)",
+      "                                        and fetch a matching ad in the background",
+      "  ad show [--root <path>] [--session <id>] [--agent <prefix>]",
+      "                                        print the last ad fetched for that session, if any",
     ].join("\n")
   );
   process.exit(1);
 }
 
+// Pulls `--flag value` pairs out of argv, returning the rest as positionals.
+function parseFlags(args) {
+  const positional = [];
+  const flags = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith("--")) {
+      flags[args[i].slice(2)] = args[i + 1];
+      i++;
+    } else {
+      positional.push(args[i]);
+    }
+  }
+  return { positional, flags };
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+
+async function main() {
 switch (command) {
   case "config": {
     const [subcommand, ...args] = rest;
@@ -53,20 +78,45 @@ switch (command) {
     break;
   }
   case "signal": {
-    const [mood, category, ...phraseParts] = rest;
+    const { positional, flags } = parseFlags(rest);
+    const [mood, category, ...phraseParts] = positional;
     const text = phraseParts.join(" ");
     if ((mood !== "frustrated" && mood !== "neutral") || !category || !text) usage();
-    const file = recordSignal({
-      projectRoot: process.cwd(),
-      sessionId: `manual-${Date.now()}`,
-      mood,
-      category,
-      text,
-      agentPrefix: "cli",
-    });
+
+    const projectRoot = flags.root || process.cwd();
+    const sessionId = flags.session || `manual-${Date.now()}`;
+    const agentPrefix = flags.agent || "cli";
+
+    const file = recordSignal({ projectRoot, sessionId, mood, category, text, agentPrefix });
     console.log(`Recorded to ${file}`);
+
+    const { apiKey, baseUrl } = resolveConfig();
+    // Node keeps this process alive for the pending fetch regardless, so
+    // just await it directly (bounded by the 10s timeout inside) rather
+    // than pretend it's detached.
+    await fireDecideAndPersist({ projectRoot, sessionId, text, apiKey, baseUrl, agentPrefix });
+    break;
+  }
+  case "ad": {
+    const [subcommand, ...args] = rest;
+    if (subcommand === "show") {
+      const { flags } = parseFlags(args);
+      const projectRoot = flags.root || process.cwd();
+      const sessionId = flags.session;
+      const agentPrefix = flags.agent || "cli";
+      if (!sessionId) usage();
+      const statePath = adStatePath(projectRoot, agentPrefix, sessionId);
+      try {
+        console.log(readFileSync(statePath, "utf8"));
+      } catch {
+        console.log(JSON.stringify({ ad: null }));
+      }
+      break;
+    }
+    usage();
     break;
   }
   default:
     usage();
+}
 }

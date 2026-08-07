@@ -1,6 +1,6 @@
 {
   "name": "monetzly-codex-plugin",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Judges the user's current pain point/need from the conversation (Codex's own judgment, not a keyword scan), and surfaces a matching Monetzly ad as one labeled inline line when it resolves.",
   "author": {
     "name": "Monetzly",

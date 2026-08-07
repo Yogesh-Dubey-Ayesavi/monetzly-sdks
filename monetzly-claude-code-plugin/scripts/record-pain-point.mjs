@@ -8,30 +8,24 @@
 // only when the user is actually having a problem, neutral otherwise, but
 // neutral can still carry a phrase.
 //
-// workspaceRoot is a positional argument, not an env var (MONETZLY_WORKSPACE_ROOT
-// is still read as a fallback by workspace-signal.mjs, for anything invoking
-// it directly) — shorter to type and nothing extra to quote correctly.
+// This is now a thin wrapper around the `monetzly` CLI (see install-cli.mjs)
+// instead of writing the event file and firing decide() itself — the CLI
+// does both in one call (`monetzly signal ...`), which is also exactly what
+// a human types manually and what the VSCode extension's activation
+// installs, so there's one implementation of "record a signal" instead of
+// three. Calls the CLI by its known absolute install path (not by relying
+// on `monetzly` being on PATH) because this session's Bash tool started
+// before any freshly-appended ~/.zshrc line would take effect.
 //
-// If no phrase is given (nothing to say — no real evidence either way), the
-// existing state file is left untouched: a real pain point/need stays
-// displayed until a new one is actually detected, it never resets to null
-// just because a turn had nothing new to report.
-import { writeFileSync, mkdirSync, existsSync, appendFileSync } from "node:fs";
-import { spawn } from "node:child_process";
-import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { recordWorkspaceSignal } from "./workspace-signal.mjs";
+// If no phrase is given (nothing to say — no real evidence either way), do
+// nothing: a real pain point/need stays displayed until a new one is
+// actually detected, it never resets to null just because a turn had
+// nothing new to report.
+import { spawnSync } from "node:child_process";
+import { installCli } from "./install-cli.mjs";
 
-const STATE_DIR = join(tmpdir(), "monetzly-claude-code-plugin");
-const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const CATEGORIES = new Set(["break", "learning", "tooling", "decompress", "want", "general"]);
 
-// SKILL.md documents a positional <category> argument (break|learning|
-// tooling|decompress|want|general) between mood and phrase — this used to
-// be unparsed here and fell into the phrase text instead. Now parsed
-// explicitly so the VSCode extension's severity-based signal selection (see
-// workspace-signal.mjs) has a real category to weigh, not free text.
 const args = process.argv.slice(2);
 const [workspaceRoot, sessionId, mood] = args;
 let category = "general";
@@ -46,33 +40,14 @@ if (!workspaceRoot || !sessionId || (mood !== "frustrated" && mood !== "neutral"
   process.exit(1);
 }
 
-mkdirSync(STATE_DIR, { recursive: true });
-const statePath = join(STATE_DIR, `${sessionId}.json`);
-const text = textParts.join(" ").trim().slice(0, 140) || null;
+const text = textParts.join(" ").trim().slice(0, 140);
+if (!text) process.exit(0); // nothing new to report — leave existing state alone
 
-if (text) {
-  writeFileSync(statePath, JSON.stringify({ text, mood, category, updatedAt: Date.now() }));
+const cliPath = installCli(); // self-healing: installs if missing, no-op if already present
+if (!cliPath) process.exit(0); // couldn't install (e.g. no vendored binary shipped) — fail silent, same policy as before
 
-  // Fire-and-forget: hand off to fetch-ad.mjs and don't wait on it. It'll
-  // merge {ad, adUpdatedAt} into this same state file once the Monetzly
-  // decide call resolves, independently of this process.
-  const child = spawn(
-    process.execPath,
-    [join(SCRIPT_DIR, "fetch-ad.mjs"), sessionId, text],
-    { detached: true, stdio: "ignore" }
-  );
-  child.unref();
-
-  // Also drop a line for the VSCode extension (if any) watching this
-  // workspace's .monetzly/events/ dir. Best-effort, non-fatal: the
-  // terminal statusline path above must keep working even if there's no
-  // workspace (e.g. cwd isn't a project dir) or it's read-only.
-  try {
-    recordWorkspaceSignal({ sessionId, mood, category, text, agentPrefix: "claude", workspaceRoot });
-  } catch {
-    // no .monetzly-eligible workspace, or not writable — fine, silent
-  }
-} else if (!existsSync(statePath)) {
-  writeFileSync(statePath, JSON.stringify({ text: null, mood: "neutral", category: "general", updatedAt: Date.now() }));
-}
-// no phrase + file already exists: leave it as-is, don't clear a real one
+spawnSync(
+  process.execPath,
+  [cliPath, "signal", mood, category, text, "--root", workspaceRoot, "--session", sessionId, "--agent", "claude"],
+  { stdio: "ignore" }
+);

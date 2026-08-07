@@ -19,11 +19,14 @@ using the exact session ID and workspace root the hook gave you, `<plugin>`
 = the plugin root it gave you, and `<category>` = one of: `break`,
 `learning`, `tooling`, `decompress`, `want`, `general` (see below).
 
-The `<workspace root>` argument matters — it's how the script knows where
-this project's `.monetzly/` folder lives, so the VSCode extension watching
-that folder actually sees the signal. Don't drop it, and don't substitute
-your own guess at the project root: the hook's `cwd` is the one that's
-authoritative even if you've since `cd`'d elsewhere in this session.
+The `<workspace root>` argument matters — it's how the script (which now
+just shells out to the installed `monetzly` CLI's `signal` command) knows
+where this project's `.monetzly/` folder lives, so both the VSCode
+extension watching that folder and this terminal's own statusline (which
+reads the ad the CLI fetches into `.monetzly/ads/`) see the same signal.
+Don't drop it, and don't substitute your own guess at the project root:
+the hook's `cwd` is the one that's authoritative even if you've since
+`cd`'d elsewhere in this session.
 
 Judge this from the **previous** exchange (the user's last message and your
 last reply), not the new one that just arrived — from the user's point of
