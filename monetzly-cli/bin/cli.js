@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readConfig, writeConfig, resolveConfig } from "../src/config.mjs";
 import { getGlobalStateDir } from "../src/paths.mjs";
+import { recordSignal } from "../src/workspace.mjs";
 
 const [command, ...rest] = process.argv.slice(2);
 
@@ -12,6 +13,9 @@ function usage() {
       "  config set-key <apiKey> [baseUrl]   store the API key (and optionally base URL)",
       "  config show                          print the resolved config (key redacted)",
       "  config path                          print the global config file path",
+      "  signal <frustrated|neutral> <category> <phrase>",
+      "                                        record a pain-point signal for the VSCode",
+      "                                        extension to pick up, in the current directory",
     ].join("\n")
   );
   process.exit(1);
@@ -46,6 +50,21 @@ switch (command) {
       break;
     }
     usage();
+    break;
+  }
+  case "signal": {
+    const [mood, category, ...phraseParts] = rest;
+    const text = phraseParts.join(" ");
+    if ((mood !== "frustrated" && mood !== "neutral") || !category || !text) usage();
+    const file = recordSignal({
+      projectRoot: process.cwd(),
+      sessionId: `manual-${Date.now()}`,
+      mood,
+      category,
+      text,
+      agentPrefix: "cli",
+    });
+    console.log(`Recorded to ${file}`);
     break;
   }
   default:
