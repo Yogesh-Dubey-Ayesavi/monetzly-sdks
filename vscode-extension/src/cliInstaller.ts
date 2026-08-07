@@ -36,8 +36,35 @@ export function installCli(context: vscode.ExtensionContext): void {
     }
   }
 
-  // Prepends binDir to PATH in every terminal VSCode spawns from here on
-  // (existing open terminals are unaffected until reopened) — no shell rc
-  // file edits, no sudo, reversible by just uninstalling the extension.
+  // Covers VSCode's own integrated terminals immediately, including ones
+  // already open (unlike the rc-file edit below, which only new shells pick
+  // up) — but does NOT reach a system Terminal.app/iTerm window, since that
+  // mechanism only injects into terminals VSCode itself spawns.
   context.environmentVariableCollection.prepend("PATH", `${binDir}${path.delimiter}`);
+
+  if (!isWindows) addToShellRcFiles(binDir);
+}
+
+const MARKER_START = "# >>> monetzly >>>";
+const MARKER_END = "# <<< monetzly <<<";
+
+/**
+ * For `monetzly` to work in a plain system terminal (not just VSCode's own),
+ * PATH has to come from the user's actual shell startup file — the same
+ * approach nvm/homebrew/pyenv installers use. Idempotent: skips files that
+ * already have the marker block, and only touches files that exist so we
+ * don't invent a shell config the user never asked for.
+ */
+function addToShellRcFiles(binDir: string): void {
+  const home = process.env.HOME;
+  if (!home) return;
+  const block = `\n${MARKER_START}\nexport PATH="${binDir}:$PATH"\n${MARKER_END}\n`;
+  const candidates = [".zshrc", ".bash_profile", ".bashrc", ".profile"];
+  for (const name of candidates) {
+    const rcPath = path.join(home, name);
+    if (!fs.existsSync(rcPath)) continue;
+    const content = fs.readFileSync(rcPath, "utf8");
+    if (content.includes(MARKER_START)) continue;
+    fs.appendFileSync(rcPath, block);
+  }
 }
