@@ -1,6 +1,6 @@
 {
   "name": "monetzly-claude-code-plugin",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "After each turn, extracts the user's current pain point from the conversation, fetches a matching Monetzly ad, and surfaces it in the status line.",
   "author": {
     "name": "Monetzly",
