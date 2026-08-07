@@ -17,5 +17,11 @@
     "url": "https://github.com/Yogesh-Dubey-Ayesavi/monetzly-sdks.git",
     "directory": "monetzly-cli"
   },
-  "files": ["bin", "src"]
+  "files": ["bin", "src", "dist"],
+  "scripts": {
+    "build": "esbuild bin/cli.js --bundle --platform=node --outfile=dist/monetzly-cli.cjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
 }

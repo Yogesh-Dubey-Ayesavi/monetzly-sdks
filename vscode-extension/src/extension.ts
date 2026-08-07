@@ -6,8 +6,8 @@ import { pickWinner, createSelectionState, SKIP_COOLDOWN_MS, Signal, SelectionSt
 import { decide, fireImpression, MonetzlyConfig } from "./client";
 import { marqueeFrame, accentForStep } from "./marquee";
 import { workspaceStateDir, ensureGitExcluded } from "./workspaceDir";
-// @ts-ignore -- monetzly-cli is a plain .mjs package, no published types
-import { resolveConfig, writeConfig } from "monetzly-cli";
+import { installCli } from "./cliInstaller";
+import { resolveConfig, writeConfig } from "./globalConfig";
 
 // How long to wait after a signal arrives before deciding, so near-
 // simultaneous signals from multiple agents get batched into one
@@ -85,6 +85,8 @@ class FileTailer {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  installCli(context);
+
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) return; // nothing to watch without a workspace root
 
