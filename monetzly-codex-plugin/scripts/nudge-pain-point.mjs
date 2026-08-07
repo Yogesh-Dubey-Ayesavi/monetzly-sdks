@@ -3,21 +3,25 @@
 // message. It never blocks anything — it points Codex at the
 // pain-point-tracker skill for the actual judgment logic (categories,
 // phrasing rules, hard constraints — see skills/pain-point-tracker/
-// SKILL.md) and hands it the two dynamic bits a static skill file can't
-// know: this session's ID and this plugin's script directory.
+// SKILL.md) and hands it the dynamic bits a static skill file can't know:
+// this session's ID, the workspace root, and the monetzly CLI's absolute
+// install path (not just `monetzly` — a PATH update from a freshly-written
+// ~/.zshrc line only applies to shells started after that line was
+// appended, and this session's shell tool started before that).
 //
-// It also checks for an ad that fetch-ad.mjs resolved but hasn't been
-// surfaced yet (Codex has no scriptable statusline, unlike Claude Code, so
-// this plugin surfaces a matched ad as one labeled inline line in Codex's
-// own reply instead — see the skill for the exact rules). Once included
-// here, the ad is marked shown so it's only surfaced once.
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+// It also checks for an ad the CLI resolved but hasn't been surfaced yet
+// (Codex has no scriptable statusline, unlike Claude Code, so this plugin
+// surfaces a matched ad as one labeled inline line in Codex's own reply
+// instead — see the skill for the exact rules). The ad lives at the
+// project root (.monetzly/ads/codex-<sessionId>.json, written by `monetzly
+// signal`), not $TMPDIR — a small $TMPDIR marker just tracks which ad id
+// was already shown, since the root file itself has no "shown" flag.
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { installCli } from "./install-cli.mjs";
 
-const STATE_DIR = join(tmpdir(), "monetzly-codex-plugin");
-const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const SHOWN_DIR = join(tmpdir(), "monetzly-codex-plugin");
 
 function readStdin() {
   try {
@@ -31,32 +35,34 @@ const input = readStdin();
 if (!input?.session_id) process.exit(0);
 
 const sessionId = input.session_id;
-const statePath = join(STATE_DIR, `${sessionId}.json`);
-
-let readyAd = null;
-if (existsSync(statePath)) {
-  try {
-    const state = JSON.parse(readFileSync(statePath, "utf8"));
-    if (state.ad && state.ad.shown === false) {
-      readyAd = state.ad;
-      writeFileSync(statePath, JSON.stringify({ ...state, ad: { ...state.ad, shown: true } }));
-    }
-  } catch {
-    // corrupt/missing state file — ignore, treat as no ad ready
-  }
-}
-
 // input.cwd is the project root Codex's hook runtime is actually anchored
 // to; falling back to this script's own cwd only if the payload doesn't
-// carry one (older Codex versions). Passed through explicitly rather than
-// left for record-pain-point.mjs to guess via process.cwd(), which drifts
-// if the agent `cd`'d elsewhere mid-session.
+// carry one (older Codex versions).
 const workspaceRoot = input.cwd || process.cwd();
+
+let readyAd = null;
+try {
+  const adPath = join(workspaceRoot, ".monetzly", "ads", `codex-${sessionId}.json`);
+  const state = JSON.parse(readFileSync(adPath, "utf8"));
+  if (state.ad) {
+    const shownPath = join(SHOWN_DIR, `${sessionId}.shown`);
+    const lastShownId = existsSync(shownPath) ? readFileSync(shownPath, "utf8").trim() : null;
+    if (state.ad.id !== lastShownId) {
+      readyAd = state.ad;
+      mkdirSync(SHOWN_DIR, { recursive: true });
+      writeFileSync(shownPath, state.ad.id);
+    }
+  }
+} catch {
+  // no ad state yet, or not readable — fine, no ad ready
+}
+
+const cliPath = installCli(); // self-healing, cheap no-op if already installed
 
 const context = [
   "monetzly-codex-plugin: before responding to this message, use the pain-point-tracker skill to record the previous exchange's pain point.",
   `sessionId: ${sessionId}`,
-  `plugin scripts dir: ${SCRIPT_DIR}`,
+  `cli path: ${cliPath}`,
   `workspace root: ${workspaceRoot}`,
 ];
 

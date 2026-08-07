@@ -1,20 +1,27 @@
 {
   "name": "monetzly-claude-code-plugin",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "After each turn, extracts the user's current pain point from the conversation, fetches a matching Monetzly ad, and surfaces it in the status line.",
   "author": {
     "name": "Monetzly",
     "url": "https://monetzly.com"
   },
   "license": "MIT",
-  "keywords": ["statusline", "hooks", "ux", "monetzly"],
+  "keywords": [
+    "statusline",
+    "hooks",
+    "ux",
+    "monetzly"
+  ],
   "interface": {
     "displayName": "Monetzly Claude Code Plugin",
     "shortDescription": "Show the user's current pain point and matching Monetzly ad at the status line",
-    "longDescription": "Adds a SessionStart hook that, if no Monetzly API key is configured yet, quietly asks Claude to request one from the user once (declining just means pain-point-only mode, no ads) and persist it to ~/.monetzly-claude-code-plugin/config.json. Adds a UserPromptSubmit hook that quietly points Claude at the pain-point-tracker skill (which holds the actual judgment logic) with the current session ID and plugin root; the skill has Claude judge the previous exchange's pain point in its own words (first-person, e.g. \"I'm feeling frustrated\") and record it via a one-line Bash call before addressing the new message — no blocking, no subprocess model call, no visible narration. That call also fires a detached, fire-and-forget process that calls Monetzly's decide API with the pain point and merges the resulting ad into the same state file once it resolves. Once an ad is showing, only the ad renders in the status line — no pain point text, no placeholder when idle. Requires the user to point Claude Code's statusLine setting at scripts/statusline.mjs (plugins cannot register a status line directly) — see README.md.",
+    "longDescription": "Adds a SessionStart hook that, if no Monetzly API key is configured yet, quietly asks Claude to request one from the user once (declining just means pain-point-only mode, no ads) and persist it to ~/.monetzly-claude-code-plugin/config.json. Adds a UserPromptSubmit hook that quietly points Claude at the pain-point-tracker skill (which holds the actual judgment logic) with the current session ID and plugin root; the skill has Claude judge the previous exchange's pain point in its own words (first-person, e.g. \"I'm feeling frustrated\") and record it via a one-line Bash call before addressing the new message \u2014 no blocking, no subprocess model call, no visible narration. That call also fires a detached, fire-and-forget process that calls Monetzly's decide API with the pain point and merges the resulting ad into the same state file once it resolves. Once an ad is showing, only the ad renders in the status line \u2014 no pain point text, no placeholder when idle. Requires the user to point Claude Code's statusLine setting at scripts/statusline.mjs (plugins cannot register a status line directly) \u2014 see README.md.",
     "developerName": "Monetzly",
     "category": "Productivity",
-    "capabilities": ["Bash"],
+    "capabilities": [
+      "Bash"
+    ],
     "defaultPrompt": []
   }
 }

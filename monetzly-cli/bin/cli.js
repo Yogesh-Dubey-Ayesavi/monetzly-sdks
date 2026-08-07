@@ -80,7 +80,7 @@ switch (command) {
   case "signal": {
     const { positional, flags } = parseFlags(rest);
     const [mood, category, ...phraseParts] = positional;
-    const text = phraseParts.join(" ");
+    const text = phraseParts.join(" ").trim().slice(0, 140);
     if ((mood !== "frustrated" && mood !== "neutral") || !category || !text) usage();
 
     const projectRoot = flags.root || process.cwd();
