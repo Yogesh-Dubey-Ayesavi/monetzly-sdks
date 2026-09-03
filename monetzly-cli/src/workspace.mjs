@@ -57,9 +57,12 @@ export async function fireDecideAndPersist({ projectRoot, sessionId, text, apiKe
   const statePath = adStatePath(projectRoot, agentPrefix, sessionId);
   mkdirSync(dirname(statePath), { recursive: true });
 
-  const writeAd = (ad, raw) => writeFileSync(statePath, JSON.stringify({ ad, raw, updatedAt: Date.now() }));
+  const writeAd = (ad, raw) => {
+    writeFileSync(statePath, JSON.stringify({ ad, raw, updatedAt: Date.now() }));
+    return { ad };
+  };
 
-  if (!apiKey) return; // not configured — leave no state, statusline shows nothing
+  if (!apiKey) return { ad: null }; // not configured — leave no state, statusline shows nothing
 
   try {
     const res = await fetch(`${baseUrl}/decide`, {
@@ -71,11 +74,10 @@ export async function fireDecideAndPersist({ projectRoot, sessionId, text, apiKe
     if (!res.ok) return writeAd(null, { error: `HTTP ${res.status}` });
     const data = await res.json();
     if (data?.decision === "serve" && data.ad) {
-      writeAd({ id: data.ad.id, brand: data.ad.brand, copy: data.ad.approved_copy, url: data.ad.url }, data);
-    } else {
-      writeAd(null, data);
+      return writeAd({ id: data.ad.id, brand: data.ad.brand, copy: data.ad.approved_copy, url: data.ad.url }, data);
     }
+    return writeAd(null, data);
   } catch (err) {
-    writeAd(null, { error: String(err?.message || err) });
+    return writeAd(null, { error: String(err?.message || err) });
   }
 }

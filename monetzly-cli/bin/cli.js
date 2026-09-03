@@ -2,6 +2,7 @@
 import { readConfig, writeConfig, resolveConfig, isValidApiKey } from "../src/config.mjs";
 import { getGlobalStateDir } from "../src/paths.mjs";
 import { recordSignal, fireDecideAndPersist, adStatePath } from "../src/workspace.mjs";
+import { capture } from "../src/analytics.mjs";
 import { readFileSync } from "node:fs";
 
 const [command, ...rest] = process.argv.slice(2);
@@ -41,11 +42,13 @@ function parseFlags(args) {
 }
 
 main().catch((err) => {
+  capture("cli_error", { command, err_type: err?.name || "Error" });
   console.error(err);
   process.exit(1);
 });
 
 async function main() {
+capture("plugin_activated", { command });
 switch (command) {
   case "config": {
     const [subcommand, ...args] = rest;
@@ -58,6 +61,7 @@ switch (command) {
       }
       writeConfig({ apiKey, ...(baseUrl ? { baseUrl } : {}) });
       console.log(`Saved to ${getGlobalStateDir()}`);
+      await capture("config_set_key", { has_base_url: Boolean(baseUrl) });
       break;
     }
     if (subcommand === "show") {
@@ -93,12 +97,18 @@ switch (command) {
 
     const file = recordSignal({ projectRoot, sessionId, mood, category, text, agentPrefix });
     console.log(`Recorded to ${file}`);
+    await capture("signal_recorded", { mood, category, agent: agentPrefix });
 
     const { apiKey, baseUrl } = resolveConfig();
     // Node keeps this process alive for the pending fetch regardless, so
     // just await it directly (bounded by the 10s timeout inside) rather
     // than pretend it's detached.
-    await fireDecideAndPersist({ projectRoot, sessionId, text, apiKey, baseUrl, agentPrefix });
+    const decided = await fireDecideAndPersist({ projectRoot, sessionId, text, apiKey, baseUrl, agentPrefix });
+    await capture("ad_decided", {
+      decision: decided?.ad ? "serve" : "skip",
+      brand: decided?.ad?.brand,
+      agent: agentPrefix,
+    });
     break;
   }
   case "ad": {

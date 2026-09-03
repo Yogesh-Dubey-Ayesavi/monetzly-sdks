@@ -51,7 +51,10 @@ function resolveConfig() {
   const stored = readConfig();
   const apiKey = process.env.MONETZLY_API_KEY || stored.apiKey || null;
   const baseUrl = (process.env.MONETZLY_BASE_URL || stored.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  return { apiKey, baseUrl, configured: typeof apiKey === "string" && /^mtzly_[A-Za-z0-9_-]+$/.test(apiKey) };
+  return { apiKey, baseUrl, configured: isValidApiKey(apiKey) };
+}
+function isValidApiKey(apiKey) {
+  return typeof apiKey === "string" && /^mtzly_[A-Za-z0-9_-]+$/.test(apiKey);
 }
 
 // src/workspace.mjs
@@ -100,9 +103,12 @@ function adStatePath(projectRoot, agentPrefix, sessionId) {
 async function fireDecideAndPersist({ projectRoot, sessionId, text, apiKey, baseUrl, agentPrefix = "cli" }) {
   const statePath = adStatePath(projectRoot, agentPrefix, sessionId);
   (0, import_node_fs2.mkdirSync)((0, import_node_path3.dirname)(statePath), { recursive: true });
-  const writeAd = (ad, raw) => (0, import_node_fs2.writeFileSync)(statePath, JSON.stringify({ ad, raw, updatedAt: Date.now() }));
+  const writeAd = (ad, raw) => {
+    (0, import_node_fs2.writeFileSync)(statePath, JSON.stringify({ ad, raw, updatedAt: Date.now() }));
+    return { ad };
+  };
   if (!apiKey)
-    return;
+    return { ad: null };
   try {
     const res = await fetch(`${baseUrl}/decide`, {
       method: "POST",
@@ -114,12 +120,32 @@ async function fireDecideAndPersist({ projectRoot, sessionId, text, apiKey, base
       return writeAd(null, { error: `HTTP ${res.status}` });
     const data = await res.json();
     if (data?.decision === "serve" && data.ad) {
-      writeAd({ id: data.ad.id, brand: data.ad.brand, copy: data.ad.approved_copy, url: data.ad.url }, data);
-    } else {
-      writeAd(null, data);
+      return writeAd({ id: data.ad.id, brand: data.ad.brand, copy: data.ad.approved_copy, url: data.ad.url }, data);
     }
+    return writeAd(null, data);
   } catch (err) {
-    writeAd(null, { error: String(err?.message || err) });
+    return writeAd(null, { error: String(err?.message || err) });
+  }
+}
+
+// src/analytics.mjs
+var import_node_crypto3 = require("node:crypto");
+var import_node_os2 = require("node:os");
+function distinctId() {
+  return (0, import_node_crypto3.createHash)("sha256").update(`${(0, import_node_os2.hostname)()}:${(0, import_node_os2.homedir)()}`).digest("hex").slice(0, 32);
+}
+async function capture(event, properties = {}) {
+  if (process.env.MONETZLY_ANALYTICS === "0")
+    return;
+  const { baseUrl } = resolveConfig();
+  try {
+    await fetch(`${baseUrl}/telemetry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, distinct_id: distinctId(), properties }),
+      signal: AbortSignal.timeout(3e3)
+    });
+  } catch {
   }
 }
 
@@ -158,10 +184,12 @@ function parseFlags(args) {
   return { positional, flags };
 }
 main().catch((err) => {
+  capture("cli_error", { command, err_type: err?.name || "Error" });
   console.error(err);
   process.exit(1);
 });
 async function main() {
+  capture("plugin_activated", { command });
   switch (command) {
     case "config": {
       const [subcommand, ...args] = rest;
@@ -169,8 +197,13 @@ async function main() {
         const [apiKey, baseUrl] = args;
         if (!apiKey)
           usage();
+        if (!isValidApiKey(apiKey)) {
+          console.error(`error: "${apiKey}" doesn't look like a Monetzly API key (expected mtzly_...)`);
+          process.exit(1);
+        }
         writeConfig({ apiKey, ...baseUrl ? { baseUrl } : {} });
         console.log(`Saved to ${getGlobalStateDir()}`);
+        await capture("config_set_key", { has_base_url: Boolean(baseUrl) });
         break;
       }
       if (subcommand === "show") {
@@ -205,8 +238,14 @@ async function main() {
       const agentPrefix = flags.agent || "cli";
       const file = recordSignal({ projectRoot, sessionId, mood, category, text, agentPrefix });
       console.log(`Recorded to ${file}`);
+      await capture("signal_recorded", { mood, category, agent: agentPrefix });
       const { apiKey, baseUrl } = resolveConfig();
-      await fireDecideAndPersist({ projectRoot, sessionId, text, apiKey, baseUrl, agentPrefix });
+      const decided = await fireDecideAndPersist({ projectRoot, sessionId, text, apiKey, baseUrl, agentPrefix });
+      await capture("ad_decided", {
+        decision: decided?.ad ? "serve" : "skip",
+        brand: decided?.ad?.brand,
+        agent: agentPrefix
+      });
       break;
     }
     case "ad": {
