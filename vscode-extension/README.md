@@ -24,22 +24,37 @@ write to it) but is automatically excluded from `git status` via
 Not yet on the Marketplace, so install the packaged `.vsix` manually:
 
 **VS Code UI**
-1. Download/build `monetzly-vscode-0.1.0.vsix` (already in this folder, or rebuild with `npm run build && npx @vscode/vsce package`).
-2. Extensions view (`Cmd+Shift+X`) → `...` menu (top-right) → **Install from VSIX...** → select the file.
-3. Reload the window if prompted.
+1. [Download `monetzly-vscode.vsix`](https://github.com/Yogesh-Dubey-Ayesavi/monetzly-sdks/raw/main/vscode-extension/monetzly-vscode.vsix) 
+2. Extensions view (`Cmd+Shift+X`) → `...` menu (top-right) → **Install from VSIX...**
+
+   ![Extensions view's ... menu with Install from VSIX highlighted](assets/install-from-vsix-menu.png)
+
+3. Select the downloaded file and hit **Install**.
+
+   ![File picker with monetzly-vscode.vsix selected and the Install button highlighted](assets/install-from-vsix-picker.png)
+
+4. Reload the window if prompted.
 
 **CLI**
 ```bash
-code --install-extension monetzly-vscode-0.1.0.vsix
+code --install-extension monetzly-vscode.vsix
 ```
 
 ## Setup
 
 1. Install the extension (see above).
-2. Command Palette → **"Monetzly: Set API Key"** → paste your `mtzly_...`
-   key. This is saved globally, once, and applies to every project you open
-   afterward.
-3. That's it — no per-project configuration needed.
+2. Command Palette (`Cmd+Shift+P`) → **"Monetzly: Set API Key"**.
+
+   ![Command Palette showing "Monetzly: Set API Key" as the top match](assets/command-palette-set-api-key.png)
+
+3. Paste your `mtzly_...` key and hit Enter.
+
+   ![Input box prompting for the Monetzly API key](assets/api-key-input-prompt.png)
+
+   Get a key at **[monetzly.com](https://monetzly.com/dashboard/developer?intent=install-vscode)** if you don't have one yet.
+4. It's saved globally — applies to every workspace and profile, no per-project configuration needed.
+
+   ![Toast confirming the Monetzly API key was saved](assets/api-key-saved-toast.png)
 
 ## Commands
 
