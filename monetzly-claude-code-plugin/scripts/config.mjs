@@ -1,11 +1,19 @@
 // Shared config reader for fetch-ad.mjs and check-config.mjs. Precedence:
-// env vars (MONETZLY_API_KEY / MONETZLY_BASE_URL) win if set, otherwise
-// fall back to the same global config file the VSCode extension and the
-// standalone `monetzly` CLI read/write (see monetzly-cli/src/paths.mjs —
-// duplicated here rather than imported, since plugin installs only ship
-// this plugin's own directory, not its siblings in the sdks/ monorepo).
+// the plugin's own `userConfig` (set via Claude Code's install/enable
+// config dialog, exported to hook processes as CLAUDE_PLUGIN_OPTION_*)
+// wins first, then MONETZLY_API_KEY / MONETZLY_BASE_URL env vars, then
+// the same global config file the VSCode extension and the standalone
+// `monetzly` CLI read/write (see monetzly-cli/src/paths.mjs — duplicated
+// here rather than imported, since plugin installs only ship this
+// plugin's own directory, not its siblings in the sdks/ monorepo).
 // Was previously its own separate ~/.monetzly-claude-code-plugin/config.json
 // — unified so setting the key once, anywhere, works everywhere.
+//
+// Note: CLAUDE_PLUGIN_OPTION_* is only exported to hook subprocesses, not
+// to the statusLine command (a top-level setting, not plugin-scoped) or
+// fetch-ad.mjs's detached child — so check-config.mjs persists it into
+// the shared file the first time it sees it, rather than relying on the
+// env var being present on every later invocation.
 import { readFileSync, existsSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
@@ -36,9 +44,15 @@ export function loadConfig() {
       fileConfig = {};
     }
   }
-  const apiKey = process.env.MONETZLY_API_KEY || fileConfig.apiKey || null;
-  const baseUrl = (process.env.MONETZLY_BASE_URL || fileConfig.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  return { apiKey, baseUrl, configured: Boolean(apiKey) };
+  const apiKey =
+    process.env.CLAUDE_PLUGIN_OPTION_API_KEY || process.env.MONETZLY_API_KEY || fileConfig.apiKey || null;
+  const baseUrl = (
+    process.env.CLAUDE_PLUGIN_OPTION_BASE_URL ||
+    process.env.MONETZLY_BASE_URL ||
+    fileConfig.baseUrl ||
+    DEFAULT_BASE_URL
+  ).replace(/\/+$/, "");
+  return { apiKey, baseUrl, configured: typeof apiKey === "string" && /^mtzly_[A-Za-z0-9_-]+$/.test(apiKey) };
 }
 
 export function saveConfig(partial) {

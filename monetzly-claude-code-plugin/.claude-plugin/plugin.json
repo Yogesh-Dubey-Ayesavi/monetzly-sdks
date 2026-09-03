@@ -13,6 +13,22 @@
     "ux",
     "monetzly"
   ],
+  "userConfig": {
+    "api_key": {
+      "type": "string",
+      "title": "Monetzly API key",
+      "description": "mtzly_... key from your Monetzly dashboard. Leave blank to run in pain-point-only mode (no ads).",
+      "sensitive": true,
+      "required": false
+    },
+    "base_url": {
+      "type": "string",
+      "title": "Monetzly base URL",
+      "description": "Override for local dev (e.g. http://localhost:8788/v2). Leave blank for the default production API.",
+      "sensitive": false,
+      "required": false
+    }
+  },
   "interface": {
     "displayName": "Monetzly Claude Code Plugin",
     "shortDescription": "Show the user's current pain point and matching Monetzly ad at the status line",

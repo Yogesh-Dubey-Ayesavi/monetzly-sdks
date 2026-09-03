@@ -41,5 +41,12 @@ export function resolveConfig() {
   const stored = readConfig();
   const apiKey = process.env.MONETZLY_API_KEY || stored.apiKey || null;
   const baseUrl = (process.env.MONETZLY_BASE_URL || stored.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  return { apiKey, baseUrl, configured: Boolean(apiKey) };
+  return { apiKey, baseUrl, configured: isValidApiKey(apiKey) };
+}
+
+// A stored value that isn't a real mtzly_ key (e.g. "--help" from a
+// malformed `config set-key` call) must not count as configured — the
+// SessionStart hook would otherwise silently skip asking forever.
+export function isValidApiKey(apiKey) {
+  return typeof apiKey === "string" && /^mtzly_[A-Za-z0-9_-]+$/.test(apiKey);
 }

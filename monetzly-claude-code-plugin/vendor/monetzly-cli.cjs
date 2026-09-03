@@ -51,7 +51,7 @@ function resolveConfig() {
   const stored = readConfig();
   const apiKey = process.env.MONETZLY_API_KEY || stored.apiKey || null;
   const baseUrl = (process.env.MONETZLY_BASE_URL || stored.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  return { apiKey, baseUrl, configured: Boolean(apiKey) };
+  return { apiKey, baseUrl, configured: typeof apiKey === "string" && /^mtzly_[A-Za-z0-9_-]+$/.test(apiKey) };
 }
 
 // src/workspace.mjs

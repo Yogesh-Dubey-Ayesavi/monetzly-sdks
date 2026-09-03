@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// SessionStart hook: if no Monetzly API key is configured yet (env var or
-// ~/.monetzly-claude-code-plugin/config.json), inject a quiet instruction telling
-// Claude to ask the user for one at the start of this session. Never blocks
-// — if the user ignores it or says no, the plugin just keeps working in
-// pain-point-only mode (no ads), same as before this feature existed.
+// SessionStart hook. Preferred path: the user set an API key through
+// Claude Code's own plugin config dialog (userConfig in plugin.json),
+// which arrives here as CLAUDE_PLUGIN_OPTION_API_KEY — persist it to the
+// shared config file (loadConfig/saveConfig) so the statusline and
+// fetch-ad subprocesses, which don't get plugin-option env vars, can see
+// it too. Chat-based asking is only a fallback for the case Claude Code's
+// dialog doesn't cover: a key set once for the plugin via env var or the
+// standalone `monetzly` CLI, not through this plugin's own install flow.
 import { readFileSync } from "node:fs";
-import { loadConfig } from "./config.mjs";
+import { loadConfig, saveConfig } from "./config.mjs";
 import { ensureGitExcluded } from "./workspace-dir.mjs";
 import { installCli } from "./install-cli.mjs";
 
@@ -32,6 +35,15 @@ if (input?.cwd) {
     // not a git repo, or not writable — the lazy call in
     // workspace-signal.mjs will retry on first actual signal write
   }
+}
+
+// If Claude Code's own config dialog gave us a key this session, persist
+// it to the shared file once — CLAUDE_PLUGIN_OPTION_* won't be present in
+// the statusline/fetch-ad subprocesses that read that file later.
+const pluginOptionKey = process.env.CLAUDE_PLUGIN_OPTION_API_KEY;
+if (pluginOptionKey && /^mtzly_[A-Za-z0-9_-]+$/.test(pluginOptionKey)) {
+  const pluginOptionBaseUrl = process.env.CLAUDE_PLUGIN_OPTION_BASE_URL;
+  saveConfig({ apiKey: pluginOptionKey, ...(pluginOptionBaseUrl ? { baseUrl: pluginOptionBaseUrl } : {}) });
 }
 
 const { configured } = loadConfig();

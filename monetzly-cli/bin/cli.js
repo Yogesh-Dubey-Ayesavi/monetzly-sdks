@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readConfig, writeConfig, resolveConfig } from "../src/config.mjs";
+import { readConfig, writeConfig, resolveConfig, isValidApiKey } from "../src/config.mjs";
 import { getGlobalStateDir } from "../src/paths.mjs";
 import { recordSignal, fireDecideAndPersist, adStatePath } from "../src/workspace.mjs";
 import { readFileSync } from "node:fs";
@@ -52,6 +52,10 @@ switch (command) {
     if (subcommand === "set-key") {
       const [apiKey, baseUrl] = args;
       if (!apiKey) usage();
+      if (!isValidApiKey(apiKey)) {
+        console.error(`error: "${apiKey}" doesn't look like a Monetzly API key (expected mtzly_...)`);
+        process.exit(1);
+      }
       writeConfig({ apiKey, ...(baseUrl ? { baseUrl } : {}) });
       console.log(`Saved to ${getGlobalStateDir()}`);
       break;
