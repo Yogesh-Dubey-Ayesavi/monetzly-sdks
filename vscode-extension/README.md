@@ -19,9 +19,23 @@ blocker, a tooling failure, a stuck moment — not idle chatter.
 write to it) but is automatically excluded from `git status` via
 `.git/info/exclude` — never committed, never touches your `.gitignore`.
 
+## Installing the .vsix
+
+Not yet on the Marketplace, so install the packaged `.vsix` manually:
+
+**VS Code UI**
+1. Download/build `monetzly-vscode-0.1.0.vsix` (already in this folder, or rebuild with `npm run build && npx @vscode/vsce package`).
+2. Extensions view (`Cmd+Shift+X`) → `...` menu (top-right) → **Install from VSIX...** → select the file.
+3. Reload the window if prompted.
+
+**CLI**
+```bash
+code --install-extension monetzly-vscode-0.1.0.vsix
+```
+
 ## Setup
 
-1. Install the extension.
+1. Install the extension (see above).
 2. Command Palette → **"Monetzly: Set API Key"** → paste your `mtzly_...`
    key. This is saved globally, once, and applies to every project you open
    afterward.
