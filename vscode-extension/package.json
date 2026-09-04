@@ -43,7 +43,8 @@
     ]
   },
   "scripts": {
-    "build": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js && mkdir -p dist && cp ../monetzly-cli/dist/monetzly-cli.cjs dist/monetzly-cli.cjs",
+    "build:cli": "npm --prefix ../monetzly-cli run build",
+    "build": "npm run build:cli && mkdir -p dist && esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js && cp ../monetzly-cli/dist/monetzly-cli.cjs dist/monetzly-cli.cjs",
     "watch": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js --watch"
   },
   "devDependencies": {

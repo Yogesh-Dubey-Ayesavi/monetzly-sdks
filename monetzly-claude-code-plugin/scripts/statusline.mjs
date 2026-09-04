@@ -39,11 +39,66 @@ if (sessionId && workspaceRoot) {
 // together.
 const ACCENTS = [208, 220, 121, 111]; // orange, gold, mint, periwinkle
 
-// ▚ is a literal 2x2 pixel-quadrant glyph — an actual tiny sprite, not a
-// menu icon standing in for one. Bookends only, never used in the middle of
-// the line, flush against the pill — no gap.
-function pixelEdge(color) {
-  return `\x1b[38;5;${color}m▚▞\x1b[0m`;
+// Tock, the mascot, stands at the ends of the line as bookends. The design
+// doc's Tock is the logo given limbs: two floating eyes over a stacked-bar
+// body, no head. A statusline is a single text row with no vertical space
+// to draw that, so Tock is a Braille sprite — one Braille cell is a 2x4
+// pixel grid, and three cells give a 6x4 canvas: an eyes row, a gap row,
+// then two bar rows (the doc's three bars compress to two at this
+// resolution). It reads as a tiny pixel figure rather than as punctuation.
+//
+// Motion is frame-by-frame (no CSS keyframes in a statusline): the
+// per-redraw `step` counter picks a pose, each one hard-cutting to the next
+// — the steps() / mechanical read Tock is built on. Only the eyes move:
+// look forward, left, right, blink. Body stays locked, like the logo.
+//
+// Braille (U+2800+) dot bits, per cell:
+//   col0row0 0x01  col1row0 0x08
+//   col0row1 0x02  col1row1 0x10
+//   col0row2 0x04  col1row2 0x20
+//   col0row3 0x40  col1row3 0x80
+const BRAILLE_BITS = [
+  [0x01, 0x08],
+  [0x02, 0x10],
+  [0x04, 0x20],
+  [0x40, 0x80],
+];
+
+// Render a 6-wide x 4-tall pixel grid as three Braille chars.
+function braille6x4(grid) {
+  let out = "";
+  for (let cell = 0; cell < 3; cell++) {
+    let v = 0;
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 2; c++) {
+        if (grid[r][cell * 2 + c]) v |= BRAILLE_BITS[r][c];
+      }
+    }
+    out += String.fromCodePoint(0x2800 + v);
+  }
+  return out;
+}
+
+// Body is fixed: row 2 the top bar (full 6px), row 3 the lower bar (inset).
+// Each pose only changes which two pixels on row 0 are the eyes.
+const TOCK_EYE_COLS = [
+  [1, 4], // forward
+  [0, 3], // glance left
+  [2, 5], // glance right
+  [1, 4], // forward
+  [],     // blink
+];
+
+function tockSprite(color, step) {
+  const eyes = TOCK_EYE_COLS[Math.floor(step / 3) % TOCK_EYE_COLS.length];
+  const grid = [
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1],
+    [0, 1, 1, 1, 1, 0],
+  ];
+  for (const c of eyes) grid[0][c] = 1;
+  return `\x1b[38;5;${color}m${braille6x4(grid)}\x1b[0m`;
 }
 
 // Marquee: a wall-clock-bucketed offset only visibly moves if Claude Code
@@ -92,7 +147,7 @@ function fullBar(brand, scrollingText, color) {
   const italic = `\x1b[3m`;
   const reset = `\x1b[0m`;
 
-  const brandChip = `${bg}${black}${bold} \u2726 ${brand}${reset}`;
+  const brandChip = `${bg}${black}${bold} ${brand}${reset}`;
   // Box-drawing bars (\u2502/\u2503) render as a hairline with no real weight in this
   // host's font, bold or not. The interpunct already proven to render fine
   // elsewhere in this bar (marquee separators) is the safer bet.
@@ -123,7 +178,7 @@ if (ad) {
   if (ad.url) {
     scrolling = scrolling.split(ad.url).join(`\x1b[4m${ad.url}\x1b[24m`);
   }
-  const bar = `${pixelEdge(color)} ${fullBar(ad.brand, scrolling, color)} ${pixelEdge(color)}`;
+  const bar = `${tockSprite(color, step)} ${fullBar(ad.brand, scrolling, color)} ${tockSprite(color, step)}`;
   line = ad.url ? hyperlink(ad.url, bar) : bar;
 }
 

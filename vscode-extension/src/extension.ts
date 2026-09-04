@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { pickWinner, createSelectionState, SKIP_COOLDOWN_MS, Signal, SelectionState } from "./signals";
 import { decide, fireImpression, MonetzlyConfig } from "./client";
-import { marqueeFrame, accentForStep } from "./marquee";
+import { marqueeFrame, accentForStep, tockSprite } from "./marquee";
 import { workspaceStateDir, ensureGitExcluded } from "./workspaceDir";
 import { installCli } from "./cliInstaller";
 import { resolveConfig, writeConfig } from "./globalConfig";
@@ -133,14 +133,14 @@ export function activate(context: vscode.ExtensionContext) {
     // width, scrolling it would just pad empty space with "· · ·" filler
     // for no reason — show it static at its natural length instead.
     if (text.length <= width) {
-      statusBarItem.text = `$(megaphone) ${text}`;
+      statusBarItem.text = `${tockSprite(0)} ${text}`;
       statusBarItem.color = new vscode.ThemeColor(accentForStep(0));
       return;
     }
     let step = 0;
     const render = () => {
       const scrolling = marqueeFrame(text, width, step);
-      statusBarItem.text = `$(megaphone) ${scrolling}`;
+      statusBarItem.text = `${tockSprite(step)} ${scrolling}`;
       statusBarItem.color = new vscode.ThemeColor(accentForStep(step));
       step += 2;
     };
